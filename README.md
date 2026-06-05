@@ -104,3 +104,76 @@ All protected endpoints require `x-user-id`.
 ```bash
 npm test
 ```
+
+## Deploy On A Contabo VPS
+
+This repo includes a production Docker Compose stack for a Contabo Ubuntu VPS:
+
+- `postgres`: PostgreSQL database with a persistent Docker volume
+- `api`: Express API, Prisma migrations, and Node.js server
+- `web`: Nginx serving the built React app and proxying `/api` to the API container
+
+### 1. Prepare the server
+
+SSH into the VPS, then install Docker:
+
+```bash
+sudo apt update
+sudo apt install -y ca-certificates curl git
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo usermod -aG docker "$USER"
+```
+
+Log out and SSH back in so the Docker group change applies.
+
+### 2. Clone the app
+
+```bash
+git clone https://github.com/kyawzin-htet/metting_romm_booking_system.git
+cd metting_romm_booking_system
+```
+
+### 3. Create production environment
+
+```bash
+cp .env.production.example .env
+nano .env
+```
+
+Change `POSTGRES_PASSWORD` to a strong password. Keep `WEB_PORT=80` unless another service already uses port 80.
+
+### 4. Start the app
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Run the seed script once after the containers are running:
+
+```bash
+docker compose -f docker-compose.prod.yml exec api npm run db:seed -w apps/api
+```
+
+Open the app at:
+
+```text
+http://YOUR_SERVER_IP
+```
+
+Health check:
+
+```bash
+curl http://YOUR_SERVER_IP/health
+```
+
+### 5. Update after new commits
+
+```bash
+git pull
+docker compose -f docker-compose.prod.yml up -d --build
+```
