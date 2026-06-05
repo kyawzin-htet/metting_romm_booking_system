@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  owner
+  user
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  name      String
+  role      Role
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  bookings  Booking[]
+
+  @@map("users")
+}
+
+model Booking {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  startTime DateTime @db.Timestamptz(3)
+  endTime   DateTime @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([startTime, endTime])
+  @@index([userId])
+  @@map("bookings")
+}
